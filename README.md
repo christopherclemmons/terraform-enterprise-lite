@@ -42,6 +42,31 @@ This project is open source and provided to the community for learning, experime
 - `tests/basic.tftest.hcl`: Terraform Testing Framework suite
 - `tests/terratest`: Terratest suite
 
+## Root File Dictionary (Beginner Friendly)
+
+- `.checkov.yaml`: Checkov security scanner settings for Terraform code.
+- `.gitignore`: Files Git should ignore (state files, local caches, and other generated artifacts).
+- `.opentofu-version`: OpenTofu version strategy for `tenv` (`latest-allowed` in this template).
+- `.pre-commit-config.yaml`: Git hook definitions that run checks before commit/push.
+- `.terraform-version`: Terraform version strategy for `tenv` (`latest-allowed` in this template).
+- `.tflint.hcl`: TFLint configuration (lint behavior and plugin settings).
+- `LICENSE`: Legal terms for use, modification, and distribution (MIT in this project).
+- `main.tf`: Core platform logic and shared locals for the root module.
+- `Makefile`: Convenience commands for bootstrapping, validation, linting, scanning, and tests.
+- `outputs.tf`: Values exposed by the root module for downstream use.
+- `providers.tf`: Root-level provider file (kept minimal/empty by design for cloud-agnostic structure).
+- `README.md`: Project documentation, setup instructions, and governance notes.
+- `trivy.yaml`: Trivy scanner settings for IaC misconfiguration scanning.
+- `variables.tf`: Inputs accepted by the root module (`cloud`, `environment`, `tags`).
+- `versions.tf`: Terraform compatibility constraints (`required_version`) for this repo.
+
+### What You Usually Edit First
+
+- `variables.tf`: when adding/changing module inputs.
+- `main.tf`: when adding logic/resources/modules.
+- `outputs.tf`: when exposing values to other stacks or pipelines.
+- `examples/aws-starter/*`: when shaping how teams consume this module.
+
 ## Version Management with tenv
 
 This repository uses:
