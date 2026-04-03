@@ -1,0 +1,136 @@
+name: IaC CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  fmt:
+    name: Format Checks (Terraform + OpenTofu)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install tenv
+        run: |
+          set -euo pipefail
+          LATEST_VERSION="$(curl --silent https://api.github.com/repos/tofuutils/tenv/releases/latest | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')"
+          curl --silent -L -o "tenv_${LATEST_VERSION}_amd64.deb" "https://github.com/tofuutils/tenv/releases/download/${LATEST_VERSION}/tenv_${LATEST_VERSION}_amd64.deb"
+          sudo dpkg -i "tenv_${LATEST_VERSION}_amd64.deb"
+          tenv update-path
+
+      - name: Install Terraform and OpenTofu
+        run: |
+          tenv tf install "$(cat .terraform-version)"
+          tenv tofu install "$(cat .opentofu-version)"
+
+      - name: Terraform fmt check
+        run: terraform fmt -check -recursive
+
+      - name: OpenTofu fmt check
+        run: tofu fmt -check -recursive
+
+  validate:
+    name: Validate (${{ matrix.tool }} / ${{ matrix.directory }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [terraform, tofu]
+        directory: [., examples/aws-starter]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install tenv
+        run: |
+          set -euo pipefail
+          LATEST_VERSION="$(curl --silent https://api.github.com/repos/tofuutils/tenv/releases/latest | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')"
+          curl --silent -L -o "tenv_${LATEST_VERSION}_amd64.deb" "https://github.com/tofuutils/tenv/releases/download/${LATEST_VERSION}/tenv_${LATEST_VERSION}_amd64.deb"
+          sudo dpkg -i "tenv_${LATEST_VERSION}_amd64.deb"
+          tenv update-path
+
+      - name: Install Terraform and OpenTofu
+        run: |
+          tenv tf install "$(cat .terraform-version)"
+          tenv tofu install "$(cat .opentofu-version)"
+
+      - name: Init and validate
+        run: |
+          ${{ matrix.tool }} -chdir=${{ matrix.directory }} init -backend=false -input=false
+          ${{ matrix.tool }} -chdir=${{ matrix.directory }} validate
+
+  tflint:
+    name: TFLint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: Init TFLint plugins
+        run: tflint --init
+
+      - name: Run TFLint recursively
+        run: tflint --recursive
+
+  terraform-test:
+    name: Terraform Test Framework
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install tenv
+        run: |
+          set -euo pipefail
+          LATEST_VERSION="$(curl --silent https://api.github.com/repos/tofuutils/tenv/releases/latest | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')"
+          curl --silent -L -o "tenv_${LATEST_VERSION}_amd64.deb" "https://github.com/tofuutils/tenv/releases/download/${LATEST_VERSION}/tenv_${LATEST_VERSION}_amd64.deb"
+          sudo dpkg -i "tenv_${LATEST_VERSION}_amd64.deb"
+          tenv update-path
+
+      - name: Install Terraform
+        run: tenv tf install "$(cat .terraform-version)"
+
+      - name: Run terraform test
+        run: terraform test -test-directory=tests
+
+  terratest:
+    name: Terratest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install tenv
+        run: |
+          set -euo pipefail
+          LATEST_VERSION="$(curl --silent https://api.github.com/repos/tofuutils/tenv/releases/latest | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')"
+          curl --silent -L -o "tenv_${LATEST_VERSION}_amd64.deb" "https://github.com/tofuutils/tenv/releases/download/${LATEST_VERSION}/tenv_${LATEST_VERSION}_amd64.deb"
+          sudo dpkg -i "tenv_${LATEST_VERSION}_amd64.deb"
+          tenv update-path
+
+      - name: Install Terraform
+        run: tenv tf install "$(cat .terraform-version)"
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tests/terratest/go.mod
+
+      - name: Run Terratest suite
+        run: |
+          cd tests/terratest
+          go test ./... -v
